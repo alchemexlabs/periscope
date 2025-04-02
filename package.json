@@ -1,0 +1,30 @@
+{
+  "name": "periscope",
+  "version": "1.0.0",
+  "description": "MEV searcher on TON blockchain using SOVA SDK",
+  "module": "src/server.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "dev": "bun --watch run src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-types": "^1.2.8"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.13.2",
+    "@hono/node-server": "^1.14.0",
+    "@sova-labs/sdk": "^0.1.9",
+    "@types/uuid": "^10.0.0",
+    "hono": "^4.7.5",
+    "pino": "^9.6.0",
+    "pino-pretty": "^10.2.0",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  }
+}

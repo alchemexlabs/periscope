@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Periscope MEV Dashboard</title>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .card-title {
+            margin: 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-online {
+            background-color: #2ecc71;
+        }
+        .status-offline {
+            background-color: #e74c3c;
+        }
+        .status-warning {
+            background-color: #f39c12;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+        }
+        .stat-title {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 0 0 5px 0;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            color: #2c3e50;
+        }
+        .confidence-bar {
+            height: 8px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .confidence-level {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 4px;
+        }
+        .high-confidence {
+            background-color: #2ecc71;
+        }
+        .medium-confidence {
+            background-color: #f39c12;
+        }
+        .low-confidence {
+            background-color: #e74c3c;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .chart-container {
+            height: 200px;
+            margin-top: 15px;
+        }
+        .dex-activity {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .dex-item {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .dex-name {
+            font-size: 14px;
+            margin: 0 0 5px 0;
+        }
+        .dex-count {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            color: #2c3e50;
+        }
+        .profit-value {
+            font-weight: 600;
+            color: #2ecc71;
+        }
+        .time-ago {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-arbitrage {
+            background-color: #e8f4fd;
+            color: #3498db;
+        }
+        .badge-sandwich {
+            background-color: #fef5e7;
+            color: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Periscope MEV Dashboard</h1>
+            <div class="connection-status">
+                <span class="status-indicator status-online" id="connection-indicator"></span>
+                <span id="connection-text">Connected</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="main-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">MEV Opportunities</h2>
+                        <div class="action-buttons">
+                            <button id="clear-arbitrage">Clear Arbitrage</button>
+                            <button id="clear-sandwich">Clear Sandwich</button>
+                            <button id="clear-all">Clear All</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="opportunities-table">
+                            <thead>
+                                <tr>
+                                    <th>Strategy</th>
+                                    <th>Token Pair</th>
+                                    <th>Profit</th>
+                                    <th>Confidence</th>
+                                    <th>Time</th>
+                                    <th>Execution Plan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="opportunities-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center;">Loading opportunities...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">System Health</h2>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <p class="stat-title">Uptime</p>
+                            <p class="stat-value" id="uptime">0s</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="stat-title">Last Packet</p>
+                            <p class="stat-value" id="last-packet">N/A</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="stat-title">Active Subscriptions</p>
+                            <p class="stat-value" id="active-subscriptions">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="stat-title">Opportunities</p>
+                            <p class="stat-value" id="opportunity-count">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">DEX Activity</h2>
+                    </div>
+                    <div class="dex-activity" id="dex-activity">
+                        <div class="dex-item">
+                            <p class="dex-name">Loading...</p>
+                            <p class="dex-count">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connect to WebSocket server
+        const socket = io();
+        let opportunities = [];
+        let systemStats = {};
+
+        // DOM Elements
+        const opportunitiesBody = document.getElementById('opportunities-body');
+        const connectionIndicator = document.getElementById('connection-indicator');
+        const connectionText = document.getElementById('connection-text');
+        const uptimeElement = document.getElementById('uptime');
+        const lastPacketElement = document.getElementById('last-packet');
+        const activeSubscriptionsElement = document.getElementById('active-subscriptions');
+        const opportunityCountElement = document.getElementById('opportunity-count');
+        const dexActivityElement = document.getElementById('dex-activity');
+        const clearArbitrageButton = document.getElementById('clear-arbitrage');
+        const clearSandwichButton = document.getElementById('clear-sandwich');
+        const clearAllButton = document.getElementById('clear-all');
+
+        // Connection status
+        socket.on('connect', () => {
+            connectionIndicator.className = 'status-indicator status-online';
+            connectionText.textContent = 'Connected';
+        });
+
+        socket.on('disconnect', () => {
+            connectionIndicator.className = 'status-indicator status-offline';
+            connectionText.textContent = 'Disconnected';
+        });
+
+        // Receive opportunities
+        socket.on('opportunities', (data) => {
+            opportunities = data;
+            updateOpportunitiesTable();
+            updateOpportunityCount();
+        });
+
+        // Receive system stats
+        socket.on('systemStats', (data) => {
+            systemStats = data;
+            updateSystemStats();
+            updateDexActivity();
+        });
+
+        // Format time ago
+        function timeAgo(timestamp) {
+            const now = new Date();
+            const past = new Date(timestamp);
+            const diffMs = now - past;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHour = Math.floor(diffMin / 60);
+
+            if (diffSec < 60) {
+                return diffSec + 's ago';
+            } else if (diffMin < 60) {
+                return diffMin + 'm ago';
+            } else {
+                return diffHour + 'h ago';
+            }
+        }
+
+        // Update opportunities table
+        function updateOpportunitiesTable() {
+            if (opportunities.length === 0) {
+                opportunitiesBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No opportunities found</td></tr>';
+                return;
+            }
+
+            // Sort by timestamp (newest first)
+            opportunities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            let html = '';
+            opportunities.forEach(opp => {
+                const confidenceClass = opp.confidence >= 0.8 ? 'high-confidence' : 
+                                        opp.confidence >= 0.6 ? 'medium-confidence' : 'low-confidence';
+                const strategyClass = opp.strategy === 'arbitrage' ? 'badge-arbitrage' : 'badge-sandwich';
+                
+                html += `
+                <tr>
+                    <td><span class="badge ${strategyClass}">${opp.strategy}</span></td>
+                    <td>${opp.pair || 'Unknown'}</td>
+                    <td class="profit-value">${opp.profitEstimate.toFixed(4)} TON</td>
+                    <td>
+                        <div class="confidence-bar">
+                            <div class="confidence-level ${confidenceClass}" style="width: ${opp.confidence * 100}%"></div>
+                        </div>
+                    </td>
+                    <td class="time-ago">${timeAgo(opp.timestamp)}</td>
+                    <td>${opp.details.executionPlan || 'N/A'}</td>
+                </tr>
+                `;
+            });
+
+            opportunitiesBody.innerHTML = html;
+        }
+
+        // Update system stats
+        function updateSystemStats() {
+            if (!systemStats) return;
+
+            // Format uptime
+            const uptime = systemStats.uptime || 0;
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = Math.floor(uptime % 60);
+            const uptimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
+            
+            uptimeElement.textContent = uptimeFormatted;
+            
+            // Format last packet time
+            const lastPacketTime = new Date(systemStats.lastPacketReceived || Date.now());
+            lastPacketElement.textContent = timeAgo(lastPacketTime);
+            
+            // Update active subscriptions
+            activeSubscriptionsElement.textContent = systemStats.activeSubscriptions || 0;
+        }
+
+        // Update DEX activity
+        function updateDexActivity() {
+            if (!systemStats || !systemStats.mempoolStats) {
+                dexActivityElement.innerHTML = '<div class="dex-item"><p class="dex-name">No activity</p><p class="dex-count">0</p></div>';
+                return;
+            }
+
+            const mempoolStats = systemStats.mempoolStats;
+            let html = '';
+
+            for (const [dex, count] of Object.entries(mempoolStats)) {
+                html += `
+                <div class="dex-item">
+                    <p class="dex-name">${dex}</p>
+                    <p class="dex-count">${count}</p>
+                </div>
+                `;
+            }
+
+            if (html === '') {
+                html = '<div class="dex-item"><p class="dex-name">No activity</p><p class="dex-count">0</p></div>';
+            }
+
+            dexActivityElement.innerHTML = html;
+        }
+
+        // Update opportunity count
+        function updateOpportunityCount() {
+            opportunityCountElement.textContent = opportunities.length;
+        }
+
+        // Clear buttons
+        clearArbitrageButton.addEventListener('click', () => {
+            opportunities = opportunities.filter(opp => opp.strategy !== 'arbitrage');
+            updateOpportunitiesTable();
+            updateOpportunityCount();
+        });
+
+        clearSandwichButton.addEventListener('click', () => {
+            opportunities = opportunities.filter(opp => opp.strategy !== 'sandwich');
+            updateOpportunitiesTable();
+            updateOpportunityCount();
+        });
+
+        clearAllButton.addEventListener('click', () => {
+            opportunities = [];
+            updateOpportunitiesTable();
+            updateOpportunityCount();
+        });
+
+        // Initial update
+        updateOpportunitiesTable();
+        updateSystemStats();
+        updateDexActivity();
+        updateOpportunityCount();
+    </script>
+</body>
+</html>

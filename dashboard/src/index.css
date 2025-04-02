@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-dark-gray font-sans;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-md shadow-sm p-card;
+  }
+  
+  .card-header {
+    @apply flex items-center justify-between mb-4;
+  }
+  
+  .heading {
+    @apply font-semibold text-dark-gray;
+  }
+  
+  .heading-lg {
+    @apply text-xl;
+  }
+  
+  .heading-md {
+    @apply text-lg;
+  }
+  
+  .heading-sm {
+    @apply text-base;
+  }
+  
+  .badge {
+    @apply px-2 py-1 text-xs rounded-full font-medium;
+  }
+  
+  .badge-ton {
+    @apply bg-ton text-white;
+  }
+  
+  .badge-success {
+    @apply bg-success text-white;
+  }
+  
+  .badge-warning {
+    @apply bg-warning text-white;
+  }
+  
+  .badge-danger {
+    @apply bg-danger text-white;
+  }
+  
+  .monospace {
+    @apply font-mono text-sm;
+  }
+  
+  .sparkline {
+    @apply h-8 w-full;
+  }
+}

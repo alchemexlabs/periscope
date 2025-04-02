@@ -1,0 +1,12 @@
+{
+  "name": "sova-connection-test",
+  "version": "1.0.0",
+  "description": "Test direct connectivity to SOVA service",
+  "main": "test-sova-connection.js",
+  "scripts": {
+    "test": "node test-sova-connection.js"
+  },
+  "dependencies": {
+    "@sova-labs/sdk": "latest"
+  }
+}

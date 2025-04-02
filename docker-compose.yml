@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: periscope-backend
+    ports:
+      - '3000:8087'
+    volumes:
+      - ./src:/app/src
+      - ./private_key.pem:/app/private_key.pem
+    environment:
+      - NODE_ENV=development
+      - BUN_DISABLE_WELCOME=true
+      - DEBUG_GRPC=true
+      - SOVA_ENDPOINT=testnet-engine.sova.network:30020
+      - SOVA_TLS=false
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8087/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Use bridge networking with DNS settings
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    name: periscope-network
